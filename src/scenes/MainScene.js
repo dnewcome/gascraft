@@ -367,10 +367,12 @@ export class MainScene extends Phaser.Scene {
   // Convert screen pointer position → grid coords (float)
   ptrToGrid() {
     const ptr = this.input.activePointer;
-    // wx/wy are in local container space (gToS output coords)
-    // gToS already cancels ORIGIN_X/Y, so no offset needed here
-    const wx = (ptr.x - this.world.x) / this.world.scaleX;
-    const wy = (ptr.y - this.world.y) / this.world.scaleY;
+    // wx/wy are in local container space.
+    // Entities are drawn centered at (gToS.x + TW/2, gToS.y + TH/2), so
+    // shift the pointer by (-TW/2, -TH/2) before inverting so that hovering
+    // over the visual center of a tile returns that tile's exact grid coord.
+    const wx = (ptr.x - this.world.x) / this.world.scaleX - TW / 2;
+    const wy = (ptr.y - this.world.y) / this.world.scaleY - TH / 2;
     // Inverse of: local.x = (gx-gy)*(TW/2), local.y = (gx+gy)*(TH/2)
     const gx = (wx / (TW / 2) + wy / (TH / 2)) / 2;
     const gy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
