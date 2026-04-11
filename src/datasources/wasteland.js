@@ -1,7 +1,9 @@
 // DoltHub public API — no auth required
 // hop/wl-commons is the shared wasteland database
+// DoltHub sends Access-Control-Allow-Origin echoing the request Origin,
+// so direct browser calls work fine — no proxy needed.
 
-const BASE = '/dolthub/api/v1alpha1/hop/wl-commons/main';
+const BASE = 'https://www.dolthub.com/api/v1alpha1/hop/wl-commons/main';
 
 async function query(sql) {
   const url = `${BASE}?q=${encodeURIComponent(sql)}`;

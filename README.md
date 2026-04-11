@@ -15,6 +15,21 @@ npm run dev
 
 Open `http://localhost:3002` (or whichever port Vite picks if 3002 is busy — check terminal output).
 
+## Deploy (static hosting)
+
+The game is a fully static site — no server required. DoltHub's API supports CORS so wasteland data is fetched directly from the browser.
+
+```bash
+npm run build   # outputs dist/
+```
+
+Then deploy `dist/` anywhere:
+- **Cloudflare Pages**: connect GitHub repo, build command `npm run build`, output `dist`
+- **Netlify**: same settings, or drag-and-drop the `dist/` folder
+- **GitHub Pages**: `gh-pages -d dist` after installing `gh-pages`
+
+The 1.5 MB JS bundle (350 KB gzipped) is almost entirely Phaser — normal for a WebGL game.
+
 **Controls:**
 - Click-drag to pan
 - Scroll to zoom
