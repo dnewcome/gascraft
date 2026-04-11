@@ -88,8 +88,16 @@ function tickPolecats(state) {
   for (const pc of state.polecats) {
     switch (pc.state) {
       case POLECAT_STATES.IDLE: {
-        // Agent polecats don't wander — they wait to be cleaned up by mapper
-        if (pc.isAgent) break;
+        if (pc.isAgent) {
+          // Re-target if the bead is back (remaining was restored by next poll)
+          const bead = state.beads.find(b => b.id === pc.beadId && !b.depleted);
+          if (bead) {
+            pc.targetBead = pc.beadId;
+            pc.state = POLECAT_STATES.MOVING_TO_BEAD;
+          }
+          // Otherwise wait — mapper will clean us up when bead truly completes
+          break;
+        }
         if (pc.idleTimer > 0) { pc.idleTimer--; break; }
         // Find nearest available bead
         const bead = nearestAvailableBead(state, pc);
