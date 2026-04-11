@@ -270,10 +270,10 @@ export class UIScene extends Phaser.Scene {
 
     // Polecat roster
     const lines = s.polecats.slice(0, 8).map(pc => {
-      const stateLabel = pc.state.replace(/_/g, ' ').padEnd(24);
-      const carry = pc.carrying > 0 ? `carry:${pc.carrying}` : '         ';
-      const label = pc.label ? `[${pc.label}]` : '';
-      return `${pc.id.padEnd(10)} ${stateLabel} ${carry} ${label}`;
+      const name = (pc.label ?? pc.id).slice(0, 14).padEnd(14);
+      const stateLabel = pc.state.replace(/_/g, ' ').padEnd(20);
+      const carry = pc.carrying > 0 ? `+${pc.carrying}` : '  ';
+      return `${name} ${stateLabel} ${carry}`;
     });
     if (s.polecats.length > 8) lines.push(`  ... +${s.polecats.length - 8} more`);
     this.rosterText.setText(lines.join('\n'));

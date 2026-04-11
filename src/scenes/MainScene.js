@@ -117,6 +117,10 @@ export class MainScene extends Phaser.Scene {
     this.unitGraphics = this.add.graphics();
     this.layerUnits.add(this.unitGraphics);
 
+    // Pool of floating label Text objects — one per agent polecat.
+    // Keyed by polecat id; created/destroyed as polecats come and go.
+    this.labelTexts = new Map();
+
     // Camera pan with mouse drag
     this.input.on('pointermove', (ptr) => {
       if (ptr.isDown && ptr.button === 0) {
@@ -468,12 +472,37 @@ export class MainScene extends Phaser.Scene {
         }
       }
 
-      // Convoy label pill
-      if (pc.label) {
-        g.fillStyle(0x222244, 0.8);
-        g.fillRoundedRect(cx - 16, cy - s - 22, 32, 10, 3);
-        g.lineStyle(1, 0x4444aa, 0.6);
-        g.strokeRoundedRect(cx - 16, cy - s - 22, 32, 10, 3);
+    }
+
+    // Sync floating handle labels — Text objects (Graphics can't render text)
+    const seenIds = new Set();
+    for (const pc of this.simState.polecats) {
+      if (!pc.label) continue;
+      seenIds.add(pc.id);
+
+      let txt = this.labelTexts.get(pc.id);
+      if (!txt) {
+        txt = this.add.text(0, 0, '', {
+          fontSize: '8px', fontFamily: 'Courier New',
+          color: '#8899ff', resolution: 2,
+        });
+        this.layerUnits.add(txt);
+        this.labelTexts.set(pc.id, txt);
+      }
+
+      const { x, y } = this.gToS(pc.gx, pc.gy);
+      const cx = x + TW / 2;
+      const cy = y + TH / 2 + Math.sin(time * 0.005) * 2;
+      const short = pc.label.length > 10 ? pc.label.slice(0, 9) + '…' : pc.label;
+      txt.setText(short);
+      txt.setPosition(cx - txt.width / 2, cy - 7 - 18); // above body diamond
+    }
+
+    // Destroy labels for polecats that no longer exist
+    for (const [id, txt] of this.labelTexts) {
+      if (!seenIds.has(id)) {
+        txt.destroy();
+        this.labelTexts.delete(id);
       }
     }
 
@@ -556,10 +585,9 @@ function findHover(gx, gy, s) {
       const carry = pc.carrying > 0 ? `carrying ${pc.carrying}` : 'empty';
       const state = pc.state.replace(/_/g, ' ');
       const lines = [
-        pc.id,
+        pc.label ?? pc.id,
         state,
         carry,
-        pc.label ? `convoy: ${pc.label}` : null,
       ].filter(Boolean);
       return { gx: pc.gx, gy: pc.gy, lift: 28, lines, color: pc.carrying > 0 ? '#ffaa00' : '#ff6600' };
     }
