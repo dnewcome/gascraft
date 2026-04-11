@@ -40,21 +40,7 @@ export function createSim() {
   // Deacon — roving monitor
   state.deacon = { id: 'deacon', gx: 10, gy: 14, label: 'DEACON', state: 'patrolling', path: [] };
 
-  // Scatter bead nodes
-  const beadSeeds = [
-    [4, 4], [6, 2], [2, 8], [5, 16], [8, 18], [18, 5],
-    [20, 12], [19, 18], [12, 20], [3, 20], [16, 3], [21, 8],
-  ];
-  for (const [gx, gy] of beadSeeds) {
-    state.beads.push({
-      id: uid('bd'),
-      gx, gy,
-      value: 5 + Math.floor(Math.random() * 10),
-      remaining: 30 + Math.floor(Math.random() * 70),
-      depleted: false,
-      assigned: null, // polecat id mining this
-    });
-  }
+  // Beads come from the wasteland API — none seeded here
 
   // Spawn initial polecats
   for (let i = 0; i < 5; i++) {
@@ -88,7 +74,6 @@ export function tick(state) {
 
   tickDeacon(state);
   tickPolecats(state);
-  tickBeadRespawn(state);
   tickApiTokens(state);
 
   // Trim events log
@@ -251,22 +236,6 @@ function tickDeacon(state) {
   }
 }
 
-function tickBeadRespawn(state) {
-  // Occasionally respawn a depleted bead at a new random location
-  if (state.tick % 600 === 0) {
-    const depleted = state.beads.filter(b => b.depleted);
-    if (depleted.length > 0) {
-      const b = depleted[Math.floor(Math.random() * depleted.length)];
-      b.depleted = false;
-      b.remaining = 30 + Math.floor(Math.random() * 70);
-      b.assigned = null;
-      // Move to new location
-      b.gx = 2 + Math.floor(Math.random() * 20);
-      b.gy = 2 + Math.floor(Math.random() * 20);
-      log(state, `new bead discovered at (${b.gx},${b.gy})`);
-    }
-  }
-}
 
 function tickApiTokens(state) {
   // Tokens regenerate slowly (rate limit recovery)

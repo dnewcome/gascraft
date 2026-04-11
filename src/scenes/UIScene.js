@@ -243,8 +243,9 @@ export class UIScene extends Phaser.Scene {
     this.txtPolecats.setText(`◆ POLECATS  ${active}/${s.polecats.length}`);
     const tokenBar = tokenBarStr(s.apiTokens, 1000);
     this.txtTokens.setText(`⚡ TOKENS  ${tokenBar} ${s.apiTokens}`);
-    const activeBeads = s.beads.filter(b => !b.depleted).length;
-    this.txtBeads.setText(`◈ BEADS  ${activeBeads}/${s.beads.length}`);
+    const realBeads = s.beads.filter(b => !b.id.startsWith('bd-'));
+    const activeBeads = realBeads.filter(b => !b.depleted).length;
+    this.txtBeads.setText(`◈ BEADS  ${activeBeads}/${realBeads.length}`);
     this.txtTick.setText(`tick ${s.tick}`);
 
     if (s.liveData) {

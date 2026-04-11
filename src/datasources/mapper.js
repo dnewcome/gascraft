@@ -71,6 +71,9 @@ function applyBeads(simState, wantedRows) {
         feed(simState, 'claimed', `claimed: ${truncate(row.title, 36)} → ${row.claimed_by}`);
       }
       b.depleted = false;
+      // Restore mining capacity each poll — bead is still open so
+      // polecats should keep working it as a visualization of ongoing effort
+      if (b.remaining <= 0) b.remaining = EFFORT_REMAINING[effort] ?? 80;
       b.label = row.title;
       b.project = row.project;
       b.beadType = row.type;
