@@ -119,90 +119,72 @@ export class UIScene extends Phaser.Scene {
 
   }
 
-  drawLegend(W, panelY) {
-    const BAR_H = 30;
-    const barY  = panelY - BAR_H - 2;
-
-    // Background bar
-    const bg = this.add.graphics();
-    bg.fillStyle(0x000000, 0.78);
-    bg.fillRect(0, barY, W, BAR_H);
-    bg.lineStyle(1, 0x223322, 1);
-    bg.strokeRect(0, barY, W, BAR_H);
-
-    const cy = barY + BAR_H / 2;  // vertical centre of bar
-    const g  = this.add.graphics();
+  drawLegend(W, _panelY) {
+    // Fixed below the HUD bar — nothing can overlap it
+    const BAR_H = 28;
+    const barY  = 46;
 
     const ITEMS = [
-      // Buildings
-      { icon: 'rig',      label: 'rig',             color: '#55ff55' },
-      { icon: 'refinery', label: 'refinery',         color: '#ff9900' },
-      { icon: 'outpost',  label: 'outpost',          color: '#8888ff' },
-      // Units
-      { icon: 'mayor',    label: 'mayor',            color: '#ffd700' },
-      { icon: 'polecat',  label: 'polecat',          color: '#ff6600' },
-      { icon: 'carrying', label: 'carrying',         color: '#ffaa00' },
-      { icon: 'stuck',    label: 'stuck',            color: '#ff2222' },
-      { icon: 'deacon',   label: 'deacon',           color: '#4488ff' },
-      // Beads
-      { icon: 'feature',  label: 'feature',          color: '#00ffaa' },
-      { icon: 'bug',      label: 'bug',              color: '#ff5555' },
-      { icon: 'docs',     label: 'docs',             color: '#ffdd44' },
-      { icon: 'design',   label: 'design',           color: '#cc44ff' },
-      { icon: 'claimed',  label: 'claimed',          color: '#888888' },
+      // section: buildings
+      { icon: 'rig',      label: 'rig',      color: '#55ff55' },
+      { icon: 'refinery', label: 'refinery', color: '#ff9900' },
+      { icon: 'outpost',  label: 'outpost',  color: '#8888ff' },
+      null, // divider
+      // section: units
+      { icon: 'mayor',    label: 'mayor',    color: '#ffd700' },
+      { icon: 'polecat',  label: 'polecat',  color: '#ff6600' },
+      { icon: 'carrying', label: 'carrying', color: '#ffaa00' },
+      { icon: 'stuck',    label: 'stuck',    color: '#ff2222' },
+      { icon: 'deacon',   label: 'deacon',   color: '#4488ff' },
+      null, // divider
+      // section: beads
+      { icon: 'feature',  label: 'feature',  color: '#00ffaa' },
+      { icon: 'bug',      label: 'bug',      color: '#ff5555' },
+      { icon: 'docs',     label: 'docs',     color: '#ffdd44' },
+      { icon: 'design',   label: 'design',   color: '#cc44ff' },
+      { icon: 'claimed',  label: 'claimed',  color: '#888888' },
     ];
 
-    // Measure total width to centre the legend
-    const ICON_W = 14;
-    const GAP    = 6;   // icon → text
-    const SEP    = 20;  // item → item
-    const SECTION_SEP = 32;
+    // Courier New 11px ≈ 7px per char (monospace) — precompute fixed widths
+    const CHAR_W   = 7;
+    const ICON_W   = 14;
+    const GAP      = 5;   // icon → label
+    const SEP      = 16;  // item → item
+    const DIV_W    = 24;  // divider gap
 
-    // Pre-measure text widths with a temp text object
-    const tmpTxt = this.add.text(-9999, -9999, '', { fontSize: '11px', fontFamily: 'Courier New' });
-    const sections = [
-      ITEMS.slice(0, 3),   // buildings
-      ITEMS.slice(3, 8),   // units
-      ITEMS.slice(8),      // beads
-    ];
-
-    // Calculate total width
+    // Total width
     let totalW = 0;
-    sections.forEach((sec, si) => {
-      if (si > 0) totalW += SECTION_SEP;
-      sec.forEach((item, i) => {
-        tmpTxt.setText(item.label);
-        item._tw = tmpTxt.width;
-        totalW += ICON_W + GAP + item._tw;
-        if (i < sec.length - 1) totalW += SEP;
-      });
-    });
-    tmpTxt.destroy();
+    for (const item of ITEMS) {
+      totalW += item ? ICON_W + GAP + item.label.length * CHAR_W + SEP : DIV_W;
+    }
 
-    let x = (W - totalW) / 2;
+    const bg = this.add.graphics().setDepth(50);
+    bg.fillStyle(0x000000, 0.82);
+    bg.fillRect(0, barY, W, BAR_H);
+    bg.lineStyle(1, 0x1a2e1a, 1);
+    bg.strokeRect(0, barY, W, BAR_H);
 
-    sections.forEach((sec, si) => {
-      if (si > 0) x += SECTION_SEP;
+    const g  = this.add.graphics().setDepth(51);
+    const cy = barY + BAR_H / 2;
+    let x = Math.round((W - totalW) / 2);
 
-      // Thin section divider
-      if (si > 0) {
-        g.lineStyle(1, 0x334433, 0.6);
-        g.lineBetween(x - SECTION_SEP / 2, barY + 6, x - SECTION_SEP / 2, barY + BAR_H - 6);
+    for (const item of ITEMS) {
+      if (!item) {
+        // Divider line
+        g.lineStyle(1, 0x2a3a2a, 0.8);
+        g.lineBetween(x + DIV_W / 2, barY + 6, x + DIV_W / 2, barY + BAR_H - 6);
+        x += DIV_W;
+        continue;
       }
 
-      sec.forEach((item, i) => {
-        const ix = x + ICON_W / 2;
-        drawLegendIcon(g, item.icon, ix, cy, item.color);
+      drawLegendIcon(g, item.icon, x + ICON_W / 2, cy, item.color);
 
-        this.add.text(x + ICON_W + GAP, cy - 7, item.label, {
-          fontSize: '11px', fontFamily: 'Courier New',
-          color: item.color,
-        });
+      this.add.text(x + ICON_W + GAP, cy - 7, item.label, {
+        fontSize: '11px', fontFamily: 'Courier New', color: item.color,
+      }).setDepth(52);
 
-        x += ICON_W + GAP + item._tw;
-        if (i < sec.length - 1) x += SEP;
-      });
-    });
+      x += ICON_W + GAP + item.label.length * CHAR_W + SEP;
+    }
   }
 
   update() {
@@ -321,10 +303,6 @@ function drawLegendIcon(g, type, cx, cy, hexColor) {
         { x: cx,     y: cy + h * 2 },
       ], true);
       // right face
-      g.fillStyle(Phaser.Display.Color.GetColor(
-        ...Phaser.Display.Color.HexStringToColor(hexColor).darken(40).color32 ? [0,0,0] : [50,50,50]
-      ), 1);
-      // simpler: just slightly lighter dark
       g.fillStyle(darkCol, 0.7);
       g.fillPoints([
         { x: cx,     y: cy + h * 2 },
