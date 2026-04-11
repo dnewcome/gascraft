@@ -1,12 +1,14 @@
 # GASCRAFT
 
-An isometric RTS visualization of the [Gastown wasteland](https://wasteland.gastownhall.ai/) — the shared public database of AI coding work items managed by the Gastown multi-agent orchestration system.
+An isometric RTS visualization built to understand how [Gastown](https://github.com/gastownhall/gastown) works — the multi-agent AI coding orchestration system. This project started as a way to make the wasteland legible: what's being worked on, who's working it, and how the pieces fit together.
 
-**What you're watching in real time:** work items (beads) appear as they're posted to the wasteland, change color when claimed by an agent, and disappear when completed. Rigs are the real project repositories registered in the system. The wasteland feed (lower right) shows a live ticker of activity across all gastown instances worldwide.
+**Data source:** the [wasteland](https://wasteland.gastownhall.ai/) — a public [DoltHub database](https://www.dolthub.com/repositories/hop/wl-commons) that gastown instances worldwide write to. No authentication required. The game polls it every 30 seconds directly from your browser.
 
-The polecat agents and their movement are a simulation layer — a predictive visualization that runs at 60fps between 30-second data polls from [DoltHub](https://www.dolthub.com/repositories/hop/wl-commons). The sim keeps things visually alive while the real data loads.
+**What you're watching:** work items (beads) appear as they're posted, change color when claimed by an agent, and disappear when completed. Outpost beacons are real rigs — project repositories actively registered in the system. Each polecat on the map corresponds to a real claimed work item, labeled with the agent handle working it.
 
-The game will eventually be a real control interface: spawn, nudge, and direct agents in your own gastown instance. That bridge isn't wired yet — today it's a live read-only visualization of the public wasteland.
+The agent movement is simulated — polecats walk between beads and the refinery as a visualization of ongoing effort, not a literal representation of what the agents are doing internally. The 30-second polls update what exists; the sim fills in the motion between.
+
+Actual control of gastown agents (spawning, nudging, directing) is a future goal and will require a bridge to a live instance. That isn't built yet. For now this is purely a read-only window into the public wasteland.
 
 ---
 
