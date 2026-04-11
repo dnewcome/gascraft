@@ -134,6 +134,9 @@ export class MainScene extends Phaser.Scene {
 
     // ── Tooltip — rendered in screen space, above world container ──
     this.tooltip = new Tooltip(this);
+
+    // UIScene doesn't auto-start (only first scene in array does in Phaser 3.60+)
+    this.scene.launch('UIScene');
   }
 
   // Convert grid position to layer-local screen position

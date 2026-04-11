@@ -11,12 +11,28 @@ export class UIScene extends Phaser.Scene {
   }
 
   create() {
+    try {
+      this._create();
+    } catch (err) {
+      console.error('[UIScene] create() threw:', err);
+      // Draw a visible error indicator so we know UIScene ran
+      const g = this.add.graphics();
+      g.fillStyle(0xff0000, 0.8);
+      g.fillRect(0, 0, 300, 30);
+      this.add.text(4, 4, 'UIScene error: ' + err.message, {
+        fontSize: '11px', fontFamily: 'Courier New', color: '#ffffff',
+      });
+    }
+  }
+
+  _create() {
     // Transparent overlay — renders above MainScene
-    this.cameras.main.setBackgroundColor(0x00000000);
+    this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
     this.scene.bringToTop();
 
-    const W = this.scale.width;
-    const H = this.scale.height;
+    const W = this.cameras.main.width;
+    const H = this.cameras.main.height;
+    console.log('[UIScene] canvas size:', W, H);
 
     // ── Top HUD bar ─────────────────────────────────────────────────
     this.hudBg = this.add.graphics();
@@ -189,7 +205,7 @@ export class UIScene extends Phaser.Scene {
 
   update() {
     const s = this.simState;
-    const W = this.scale.width;
+    const W = this.cameras.main.width;
 
     // HUD values
     this.txtResources.setText(`⬡ MERGED  ${s.resources}`);
