@@ -336,14 +336,13 @@ export class MainScene extends Phaser.Scene {
   // Convert screen pointer position → grid coords (float)
   ptrToGrid() {
     const ptr = this.input.activePointer;
+    // wx/wy are in local container space (gToS output coords)
+    // gToS already cancels ORIGIN_X/Y, so no offset needed here
     const wx = (ptr.x - this.world.x) / this.world.scaleX;
     const wy = (ptr.y - this.world.y) / this.world.scaleY;
-    // Undo gToS: gToS adds ORIGIN_X and subtracts ORIGIN_Y
-    const sx = wx - ORIGIN_X;
-    const sy = wy + ORIGIN_Y;
-    // Inverse iso projection
-    const gx = (sx / (TW / 2) + sy / (TH / 2)) / 2;
-    const gy = (sy / (TH / 2) - sx / (TW / 2)) / 2;
+    // Inverse of: local.x = (gx-gy)*(TW/2), local.y = (gx+gy)*(TH/2)
+    const gx = (wx / (TW / 2) + wy / (TH / 2)) / 2;
+    const gy = (wy / (TH / 2) - wx / (TW / 2)) / 2;
     return { gx, gy };
   }
 
@@ -544,9 +543,9 @@ function gridDist(gx, gy, ex, ey) {
 }
 
 function findHover(gx, gy, s) {
-  const UNIT_R  = 0.7;  // grid-unit radius for units
-  const BEAD_R  = 0.6;
-  const BLDG_R  = 1.4;
+  const UNIT_R  = 0.9;
+  const BEAD_R  = 0.8;
+  const BLDG_R  = 1.8;
 
   // Polecats (highest priority — smallest, hardest to click)
   for (const pc of s.polecats) {
