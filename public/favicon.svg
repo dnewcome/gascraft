@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background -->
+  <rect width="32" height="32" fill="#0a0a0a" rx="3"/>
+  <!-- Glow (matches fillCircle at cx,cy r=s+2 opacity 0.25) -->
+  <circle cx="16" cy="17" r="14" fill="#00ffaa" opacity="0.22"/>
+  <!-- Gem body (matches fillPoints diamond: top,right,bottom,left with s=12) -->
+  <polygon points="16,5 22,17 16,24 10,17" fill="#00ffaa" opacity="0.9"/>
+  <!-- Highlight dot (matches fillCircle at cy-s*0.2, r=s*0.22 opacity 0.5) -->
+  <circle cx="16" cy="14.6" r="2.6" fill="white" opacity="0.5"/>
+</svg>
