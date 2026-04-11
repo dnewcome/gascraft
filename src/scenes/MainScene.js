@@ -56,6 +56,20 @@ const C = {
 
   // Tile highlight
   highlight:   0x334422,
+
+  // Outpost (wasteland rig)
+  outpostTop:   0x1a1a2d,
+  outpostLeft:  0x0f0f1a,
+  outpostRight: 0x08080f,
+  outpostRoof:  0x2d2d4a,
+  outpostAccent:0x8888ff,
+
+  // Bead type variants
+  beadFeature: 0x00ffaa,  // cyan-green
+  beadBug:     0xff4444,  // red
+  beadDocs:    0xffdd00,  // yellow
+  beadDesign:  0xcc44ff,  // purple
+  beadClaimed: 0x888888,  // grey — already claimed
 };
 
 export class MainScene extends Phaser.Scene {
@@ -191,6 +205,7 @@ export class MainScene extends Phaser.Scene {
     for (const b of this.simState.buildings) {
       if (b.type === 'rig') this.drawRig(g, b);
       else if (b.type === 'refinery') this.drawRefinery(g, b);
+      else if (b.type === 'outpost') this.drawOutpost(g, b);
     }
   }
 
@@ -247,6 +262,21 @@ export class MainScene extends Phaser.Scene {
     // Glow dot at chimney top
     g.fillStyle(0xff4400, 0.9);
     g.fillCircle(base.x + TW / 2, base.y - bldH - 20, 4);
+  }
+
+  drawOutpost(g, b) {
+    const { gx, gy } = b;
+    this.drawTile(g, gx, gy, C.outpostTop, C.outpostLeft, C.outpostRight);
+    const bldH = 18;
+    this.drawRaisedBox(g, gx, gy, bldH, C.outpostRoof, C.outpostLeft, C.outpostRight);
+    // Small beacon on top
+    const top = this.gToS(gx, gy);
+    const cx = top.x + TW / 2;
+    const cy = top.y - bldH - 6;
+    g.fillStyle(C.outpostAccent, 0.7);
+    g.fillRect(cx - 1, cy - 8, 2, 8);
+    g.fillStyle(C.outpostAccent, 0.9);
+    g.fillCircle(cx, cy - 8, 2);
   }
 
   drawRaisedBox(g, gx, gy, raised, topColor, leftColor, rightColor) {
@@ -313,12 +343,19 @@ export class MainScene extends Phaser.Scene {
       const cy = y + TH / 2;
       const size = 6 + (b.remaining / 100) * 8;
 
+      // Color by bead type (real wasteland data) or claimed state
+      let glowColor = C.beadGlow;
+      if (b.isClaimed)         glowColor = C.beadClaimed;
+      else if (b.beadType === 'bug')    glowColor = C.beadBug;
+      else if (b.beadType === 'docs')   glowColor = C.beadDocs;
+      else if (b.beadType === 'design') glowColor = C.beadDesign;
+
       // Glow
-      g.fillStyle(C.beadGlow, pulse * 0.2);
+      g.fillStyle(glowColor, pulse * 0.2);
       g.fillCircle(cx, cy, size * 2);
 
       // Crystal body — small diamond
-      g.fillStyle(C.beadGlow, pulse * 0.9);
+      g.fillStyle(glowColor, pulse * 0.9);
       g.fillPoints([
         { x: cx,          y: cy - size },
         { x: cx + size/2, y: cy },
@@ -327,7 +364,7 @@ export class MainScene extends Phaser.Scene {
       ], true);
 
       // Inner bright core
-      g.fillStyle(0xffffff, pulse * 0.6);
+      g.fillStyle(b.isClaimed ? 0x444444 : 0xffffff, pulse * 0.6);
       g.fillCircle(cx, cy - size * 0.2, size * 0.25);
 
       // Label if large

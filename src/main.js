@@ -1,13 +1,21 @@
 import Phaser from 'phaser';
 import { createSim } from './sim.js';
-
-// Create simulation state first — shared between scenes
-const simState = createSim();
-
-// ── Inline scene classes with simState captured in closure ──────────
-
+import { startPolling } from './datasources/wasteland.js';
+import { applyWasteland } from './datasources/mapper.js';
 import { MainScene as MainSceneBase } from './scenes/MainScene.js';
 import { UIScene as UISceneBase } from './scenes/UIScene.js';
+
+const simState = createSim();
+
+// Start pulling live wasteland data immediately.
+// applyWasteland merges it into simState in-place — the game loop picks it up
+// on the next tick with no special wiring needed.
+const stopPolling = startPolling((data) => {
+  applyWasteland(simState, data);
+  simState.lastFetch = data.ts;
+}, 30_000);
+
+window.addEventListener('beforeunload', stopPolling);
 
 class MainScene extends MainSceneBase {
   init() { super.init({ simState }); }
@@ -32,5 +40,4 @@ const config = {
 
 const game = new Phaser.Game(config);
 
-// Expose for browser console debugging
-window.gascraft = { game, simState };
+window.gascraft = { game, simState, stopPolling };

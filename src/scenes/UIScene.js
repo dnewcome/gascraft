@@ -36,7 +36,8 @@ export class UIScene extends Phaser.Scene {
     this.txtPolecats   = this.add.text(340, 8, '', hudStyle());
     this.txtTokens     = this.add.text(520, 8, '', hudStyle());
     this.txtBeads      = this.add.text(680, 8, '', hudStyle());
-    this.txtTick       = this.add.text(W - 120, 8, '', { ...hudStyle(), color: '#446644' });
+    this.txtTick       = this.add.text(W - 200, 8, '', { ...hudStyle(), color: '#446644' });
+    this.txtLive       = this.add.text(W - 60,  8, '', { fontSize: '11px', fontFamily: 'Courier New', color: '#ff4444' });
 
     // ── Bottom panel ─────────────────────────────────────────────────
     const panelH = 140;
@@ -78,13 +79,14 @@ export class UIScene extends Phaser.Scene {
       createConvoy(this.simState);
     });
 
-    // ── Polecat state legend ─────────────────────────────────────────
-    const legX = W - 180;
-    const legY = H - 40;
-    this.add.text(legX, legY, '■ idle  ■ working  ■ carrying  ■ stuck', {
-      fontSize: '9px', fontFamily: 'Courier New',
-      color: '#225522',
-    }).setAlpha(0.7);
+    // ── Bead type legend ────────────────────────────────────────────
+    const legX = W - 340;
+    const legY = panelY + 8;
+    this.add.text(legX, legY,      '◆ feature', { fontSize: '10px', fontFamily: 'Courier New', color: '#00ffaa' });
+    this.add.text(legX, legY + 14, '◆ bug',     { fontSize: '10px', fontFamily: 'Courier New', color: '#ff4444' });
+    this.add.text(legX, legY + 28, '◆ docs',    { fontSize: '10px', fontFamily: 'Courier New', color: '#ffdd00' });
+    this.add.text(legX, legY + 42, '◆ design',  { fontSize: '10px', fontFamily: 'Courier New', color: '#cc44ff' });
+    this.add.text(legX, legY + 56, '◆ claimed', { fontSize: '10px', fontFamily: 'Courier New', color: '#888888' });
 
   }
 
@@ -101,6 +103,13 @@ export class UIScene extends Phaser.Scene {
     const activeBeads = s.beads.filter(b => !b.depleted).length;
     this.txtBeads.setText(`◈ BEADS  ${activeBeads}/${s.beads.length}`);
     this.txtTick.setText(`tick ${s.tick}`);
+
+    if (s.liveData) {
+      const age = s.lastFetch ? Math.floor((Date.now() - s.lastFetch) / 1000) : '?';
+      this.txtLive.setText(`● LIVE ${age}s`).setColor('#44ff88');
+    } else {
+      this.txtLive.setText('○ SIM').setColor('#446644');
+    }
 
     // Event log
     const recent = s.events.slice(-6);
