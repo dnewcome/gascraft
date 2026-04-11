@@ -88,6 +88,41 @@ export class UIScene extends Phaser.Scene {
     this.add.text(legX, legY + 42, '◆ design',  { fontSize: '10px', fontFamily: 'Courier New', color: '#cc44ff' });
     this.add.text(legX, legY + 56, '◆ claimed', { fontSize: '10px', fontFamily: 'Courier New', color: '#888888' });
 
+    // ── Wasteland live feed panel ────────────────────────────────────
+    const feedW = 380;
+    const feedLines = 14;
+    const feedLineH = 15;
+    const feedPad = 8;
+    const feedInnerH = feedLines * feedLineH + feedPad * 2;
+    const feedX = W - feedW - 10;
+    const feedY = panelY - feedInnerH - 28;
+
+    const feedBg = this.add.graphics();
+    feedBg.fillStyle(0x000000, 0.82);
+    feedBg.fillRect(feedX, feedY, feedW, feedInnerH);
+    feedBg.lineStyle(1, 0x224422, 1);
+    feedBg.strokeRect(feedX, feedY, feedW, feedInnerH);
+    // Accent line on top
+    feedBg.lineStyle(1, 0x33ff66, 0.5);
+    feedBg.strokeRect(feedX, feedY, feedW, feedInnerH);
+
+    this.add.text(feedX + feedPad, feedY - 16, '// wasteland feed', {
+      fontSize: '10px', fontFamily: 'Courier New', color: '#336633',
+    });
+
+    this.feedLines = [];
+    for (let i = 0; i < feedLines; i++) {
+      this.feedLines.push(this.add.text(
+        feedX + feedPad,
+        feedY + feedPad + i * feedLineH,
+        '',
+        { fontSize: '11px', fontFamily: 'Courier New', color: '#336633', wordWrap: { width: feedW - feedPad * 2 } }
+      ));
+    }
+
+    // Track how many feed entries we've shown so we only animate new ones
+    this._feedShown = 0;
+
   }
 
   update() {
@@ -136,6 +171,42 @@ export class UIScene extends Phaser.Scene {
 
     // Disable spawn button if not enough tokens
     this.btnSpawn.setAlpha(s.apiTokens >= 50 ? 1 : 0.4);
+
+    // ── Wasteland feed ───────────────────────────────────────────────
+    this.updateFeed(s);
+  }
+
+  updateFeed(s) {
+    const feed = s.feed ?? [];
+    const lines = this.feedLines;
+    const n = lines.length;
+
+    // Show the last n entries, newest at bottom
+    const visible = feed.slice(-n);
+
+    for (let i = 0; i < n; i++) {
+      const entry = visible[i];
+      if (!entry) { lines[i].setText('').setAlpha(0); continue; }
+
+      const age = (Date.now() - entry.ts) / 1000; // seconds
+      const isNew = age < 2;
+      const alpha = Math.max(0.15, 1 - age / 120);
+
+      lines[i].setText(formatFeedLine(entry));
+      lines[i].setColor(feedColor(entry.type));
+      lines[i].setAlpha(isNew ? 1 : alpha);
+
+      // Flash new lines bright white briefly
+      if (isNew && entry.ts !== lines[i]._lastTs) {
+        lines[i]._lastTs = entry.ts;
+        this.tweens.add({
+          targets: lines[i],
+          alpha: { from: 1, to: alpha },
+          duration: 1800,
+          ease: 'Cubic.easeOut',
+        });
+      }
+    }
   }
 }
 
@@ -148,6 +219,23 @@ function hudStyle() {
 function tokenBarStr(val, max) {
   const filled = Math.round((val / max) * 10);
   return '[' + '█'.repeat(filled) + '░'.repeat(10 - filled) + ']';
+}
+
+function feedColor(type) {
+  switch (type) {
+    case 'bug':     return '#ff5555';
+    case 'docs':    return '#ffdd44';
+    case 'design':  return '#cc66ff';
+    case 'claimed': return '#aaaaaa';
+    case 'done':    return '#44aaff';
+    case 'rig':     return '#8888ff';
+    default:        return '#44ff88'; // feature / unknown
+  }
+}
+
+function formatFeedLine(entry) {
+  const time = new Date(entry.ts).toTimeString().slice(0, 8);
+  return `${time}  ${entry.msg}`;
 }
 
 function makeButton(scene, x, y, label, onClick) {

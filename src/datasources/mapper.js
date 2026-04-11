@@ -17,27 +17,24 @@ const EFFORT_VALUE = { small: 8, medium: 15, large: 30 };
 const EFFORT_REMAINING = { small: 40, medium: 80, large: 150 };
 
 export function applyWasteland(simState, { wanted, rigs, completions }) {
+  if (!simState.feed) simState.feed = [];
   applyRigs(simState, rigs);
   applyBeads(simState, wanted);
   simState.resources = completions;
   simState.liveData = true;
+  if (simState.feed.length > 200) simState.feed = simState.feed.slice(-200);
 }
 
 function applyRigs(simState, rigRows) {
-  // Keep the player's own rig and refinery in place.
-  // Add/update real wasteland rigs as outpost markers.
   const existingBuildings = new Map(simState.buildings.map(b => [b.id, b]));
 
   for (const row of rigRows) {
     const id = `wl-rig-${row.handle}`;
     if (existingBuildings.has(id)) {
-      // Update label but leave position alone
       existingBuildings.get(id).label = row.display_name || row.handle;
       existingBuildings.get(id).lastSeen = row.last_seen;
-      existingBuildings.get(id).handle = row.handle;
     } else {
       const pos = hashPos(row.handle);
-      // Avoid clobbering the player's rig/refinery footprint
       if (pos.gx >= 8 && pos.gx <= 17 && pos.gy >= 8 && pos.gy <= 14) {
         pos.gx = (pos.gx + 7) % 22 + 1;
       }
@@ -53,6 +50,7 @@ function applyRigs(simState, rigRows) {
         lastSeen: row.last_seen,
         trustLevel: row.trust_level ?? 0,
       });
+      feed(simState, 'rig', `rig registered: ${row.handle}`);
     }
   }
 }
@@ -64,16 +62,20 @@ function applyBeads(simState, wantedRows) {
   for (const row of wantedRows) {
     incomingIds.add(row.id);
     const effort = row.effort_level ?? 'medium';
+    const isClaimed = row.status === 'claimed';
 
     if (existingBeads.has(row.id)) {
-      // Update mutable fields, leave position + animation state alone
       const b = existingBeads.get(row.id);
+      // Detect claim state change
+      if (!b.isClaimed && isClaimed) {
+        feed(simState, 'claimed', `claimed: ${truncate(row.title, 36)} → ${row.claimed_by}`);
+      }
       b.depleted = false;
       b.label = row.title;
       b.project = row.project;
       b.beadType = row.type;
       b.claimedBy = row.claimed_by ?? null;
-      b.isClaimed = row.status === 'claimed';
+      b.isClaimed = isClaimed;
     } else {
       const pos = hashPos(row.id);
       simState.beads.push({
@@ -86,20 +88,32 @@ function applyBeads(simState, wantedRows) {
         assigned: null,
         label: row.title,
         project: row.project,
-        beadType: row.type,       // feature | bug | docs | design
+        beadType: row.type,
         postedBy: row.posted_by,
         claimedBy: row.claimed_by ?? null,
-        isClaimed: row.status === 'claimed',
+        isClaimed,
       });
+      const typeTag = row.type ? `[${row.type}]` : '';
+      feed(simState, row.type ?? 'feature',
+        `${typeTag} ${truncate(row.title, 38)} — ${row.project ?? '?'}`);
     }
   }
 
-  // Mark beads no longer in the feed as depleted (completed/withdrawn server-side)
   for (const b of simState.beads) {
-    if (b.id.startsWith('bd-')) continue; // leave simulated beads alone
-    if (!incomingIds.has(b.id)) {
+    if (b.id.startsWith('bd-')) continue;
+    if (!incomingIds.has(b.id) && !b.depleted) {
       b.depleted = true;
       b.remaining = 0;
+      feed(simState, 'done', `completed: ${truncate(b.label ?? b.id, 40)}`);
     }
   }
+}
+
+function feed(simState, type, msg) {
+  simState.feed.push({ type, msg, ts: Date.now() });
+}
+
+function truncate(str, len) {
+  if (!str) return '';
+  return str.length > len ? str.slice(0, len - 1) + '…' : str;
 }
