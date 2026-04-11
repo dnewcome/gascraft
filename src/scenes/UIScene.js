@@ -314,18 +314,17 @@ export class UIScene extends Phaser.Scene {
 
       const age = (Date.now() - entry.ts) / 1000;
       const isNew = age < 2;
-      const alpha = Math.max(0.15, 1 - age / 120);
       const text = formatFeedLine(entry, maxChars);
 
       lines[i].setText(text);
       lines[i].setColor(feedColor(entry.type));
-      lines[i].setAlpha(isNew ? 1 : alpha);
+      lines[i].setAlpha(1);
 
       if (isNew && entry.ts !== lines[i]._lastTs) {
         lines[i]._lastTs = entry.ts;
         this.tweens.add({
           targets: lines[i],
-          alpha: { from: 1, to: alpha },
+          alpha: { from: 1.5, to: 1 },
           duration: 1800,
           ease: 'Cubic.easeOut',
         });
