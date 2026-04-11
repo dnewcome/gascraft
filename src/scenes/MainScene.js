@@ -132,8 +132,8 @@ export class MainScene extends Phaser.Scene {
       this.world.setScale(clamped);
     });
 
-    // Emit event bus for UI scene
-    this.events.on('update', () => {});
+    // ── Tooltip — rendered in screen space, above world container ──
+    this.tooltip = new Tooltip(this);
   }
 
   // Convert grid position to layer-local screen position
@@ -328,6 +328,46 @@ export class MainScene extends Phaser.Scene {
     // Redraw dynamic layers
     this.drawBeads(time);
     this.drawUnits(time);
+
+    // Hover tooltips
+    this.updateTooltip();
+  }
+
+  // Convert screen pointer position → grid coords (float)
+  ptrToGrid() {
+    const ptr = this.input.activePointer;
+    const wx = (ptr.x - this.world.x) / this.world.scaleX;
+    const wy = (ptr.y - this.world.y) / this.world.scaleY;
+    // Undo gToS: gToS adds ORIGIN_X and subtracts ORIGIN_Y
+    const sx = wx - ORIGIN_X;
+    const sy = wy + ORIGIN_Y;
+    // Inverse iso projection
+    const gx = (sx / (TW / 2) + sy / (TH / 2)) / 2;
+    const gy = (sy / (TH / 2) - sx / (TW / 2)) / 2;
+    return { gx, gy };
+  }
+
+  // Convert a grid position to final screen coords (for tooltip anchor)
+  gridToScreen(gx, gy) {
+    const local = this.gToS(gx, gy);
+    return {
+      x: local.x * this.world.scaleX + this.world.x,
+      y: local.y * this.world.scaleY + this.world.y,
+    };
+  }
+
+  updateTooltip() {
+    const { gx, gy } = this.ptrToGrid();
+    const s = this.simState;
+    const hit = findHover(gx, gy, s);
+
+    if (hit) {
+      const screen = this.gridToScreen(hit.gx, hit.gy);
+      // Offset upward so bubble sits above the entity
+      this.tooltip.show(screen.x, screen.y - 30 * this.world.scaleY, hit.lines, hit.color);
+    } else {
+      this.tooltip.hide();
+    }
   }
 
   drawBeads(time) {
@@ -492,5 +532,194 @@ export class MainScene extends Phaser.Scene {
       g.fillStyle(C.deaconBody, 0.9);
       g.fillTriangle(cx, cy - s, cx + s, cy + s * 0.6, cx - s, cy + s * 0.6);
     }
+  }
+}
+
+// ── Hit detection ─────────────────────────────────────────────────
+// Returns { gx, gy, lines[], color } for the topmost entity under the cursor,
+// or null if nothing is close enough.
+
+function gridDist(gx, gy, ex, ey) {
+  return Math.sqrt((gx - ex) ** 2 + (gy - ey) ** 2);
+}
+
+function findHover(gx, gy, s) {
+  const UNIT_R  = 0.7;  // grid-unit radius for units
+  const BEAD_R  = 0.6;
+  const BLDG_R  = 1.4;
+
+  // Polecats (highest priority — smallest, hardest to click)
+  for (const pc of s.polecats) {
+    if (gridDist(gx, gy, pc.gx, pc.gy) < UNIT_R) {
+      const carry = pc.carrying > 0 ? `carrying ${pc.carrying}` : 'empty';
+      const state = pc.state.replace(/_/g, ' ');
+      const lines = [
+        pc.id,
+        state,
+        carry,
+        pc.label ? `convoy: ${pc.label}` : null,
+      ].filter(Boolean);
+      return { gx: pc.gx, gy: pc.gy, lines, color: pc.carrying > 0 ? '#ffaa00' : '#ff6600' };
+    }
+  }
+
+  // Mayor
+  if (s.mayor && gridDist(gx, gy, s.mayor.gx, s.mayor.gy) < UNIT_R) {
+    return {
+      gx: s.mayor.gx, gy: s.mayor.gy,
+      lines: ['MAYOR', 'commanding', 'coordinates all polecats'],
+      color: '#ffd700',
+    };
+  }
+
+  // Deacon
+  if (s.deacon && gridDist(gx, gy, s.deacon.gx, s.deacon.gy) < UNIT_R) {
+    return {
+      gx: s.deacon.gx, gy: s.deacon.gy,
+      lines: ['DEACON', 'patrolling', 'detects & nudges stuck polecats'],
+      color: '#4488ff',
+    };
+  }
+
+  // Beads
+  for (const b of s.beads) {
+    if (b.depleted) continue;
+    if (gridDist(gx, gy, b.gx, b.gy) < BEAD_R) {
+      const lines = [
+        b.label ? truncate(b.label, 34) : b.id,
+        b.project ? `project: ${b.project}` : null,
+        b.beadType ? `type: ${b.beadType}` : null,
+        b.isClaimed ? `claimed by: ${b.claimedBy}` : `posted by: ${b.postedBy ?? '?'}`,
+        `effort: ${b.value}  remaining: ${b.remaining}`,
+      ].filter(Boolean);
+      const color = { bug: '#ff5555', docs: '#ffdd44', design: '#cc66ff' }[b.beadType] ?? '#44ffaa';
+      return { gx: b.gx, gy: b.gy, lines, color };
+    }
+  }
+
+  // Buildings
+  for (const b of s.buildings) {
+    const cx = b.gx + (b.width ?? 1) / 2;
+    const cy = b.gy + (b.height ?? 1) / 2;
+    if (gridDist(gx, gy, cx, cy) < BLDG_R) {
+      if (b.type === 'rig') {
+        return {
+          gx: cx, gy: cy,
+          lines: ['RIG', 'command center', 'spawns polecats'],
+          color: '#55ff55',
+        };
+      }
+      if (b.type === 'refinery') {
+        return {
+          gx: cx, gy: cy,
+          lines: ['REFINERY', 'merge queue', 'processes completed work'],
+          color: '#ff9900',
+        };
+      }
+      if (b.type === 'outpost') {
+        const seen = b.lastSeen ? relativeTime(b.lastSeen) : 'unknown';
+        return {
+          gx: cx, gy: cy,
+          lines: [
+            b.label || b.handle,
+            `@${b.handle}`,
+            `last seen: ${seen}`,
+            b.trustLevel ? `trust: ${b.trustLevel}` : null,
+          ].filter(Boolean),
+          color: '#8888ff',
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function truncate(str, len) {
+  return str && str.length > len ? str.slice(0, len - 1) + '…' : str;
+}
+
+function relativeTime(isoStr) {
+  const ms = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────
+// Drawn in screen space (not inside the world container) so it doesn't
+// scale or pan with the map.
+
+class Tooltip {
+  constructor(scene) {
+    this.scene = scene;
+    this.bg   = scene.add.graphics().setDepth(100);
+    this.text = scene.add.text(0, 0, '', {
+      fontSize: '12px',
+      fontFamily: 'Courier New',
+      color: '#ffffff',
+      lineSpacing: 5,
+      padding: { x: 0, y: 0 },
+    }).setDepth(101);
+    this.visible = false;
+    this.hide();
+  }
+
+  show(x, y, lines, accentColor = '#44ff88') {
+    const PAD  = 10;
+    const PTR  = 7;   // pointer triangle height
+    const text = lines.join('\n');
+
+    // Color the first line as the accent/title
+    this.text.setText(text);
+    this.text.setColor(accentColor);  // whole text for simplicity — first line pops
+
+    const tw = this.text.width  + PAD * 2;
+    const th = this.text.height + PAD * 2;
+
+    // Keep bubble on screen
+    const W = this.scene.scale.width;
+    let bx = x - tw / 2;
+    if (bx < 4)       bx = 4;
+    if (bx + tw > W - 4) bx = W - tw - 4;
+    const by = y - th - PTR;
+
+    this.bg.clear();
+    // Shadow
+    this.bg.fillStyle(0x000000, 0.4);
+    this.bg.fillRoundedRect(bx + 3, by + 3, tw, th + PTR, 5);
+    // Background
+    this.bg.fillStyle(0x0a0f0a, 0.93);
+    this.bg.fillRoundedRect(bx, by, tw, th, 5);
+    // Border
+    this.bg.lineStyle(1, Phaser.Display.Color.HexStringToColor(accentColor).color, 0.8);
+    this.bg.strokeRoundedRect(bx, by, tw, th, 5);
+    // Pointer triangle
+    this.bg.fillStyle(0x0a0f0a, 0.93);
+    this.bg.fillTriangle(
+      x - PTR, by + th,
+      x + PTR, by + th,
+      x,       by + th + PTR,
+    );
+    this.bg.lineStyle(1, Phaser.Display.Color.HexStringToColor(accentColor).color, 0.8);
+    this.bg.strokeTriangle(
+      x - PTR, by + th,
+      x + PTR, by + th,
+      x,       by + th + PTR,
+    );
+
+    this.text.setPosition(bx + PAD, by + PAD);
+    this.bg.setVisible(true);
+    this.text.setVisible(true);
+    this.visible = true;
+  }
+
+  hide() {
+    this.bg.clear();
+    this.bg.setVisible(false);
+    this.text.setVisible(false);
+    this.visible = false;
   }
 }
