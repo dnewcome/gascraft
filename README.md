@@ -176,6 +176,37 @@ You (player / god)
 
 ---
 
+## Simulation notes
+
+### What's real vs. simulated
+
+Each polecat on the map maps 1:1 to a real claimed work item in the wasteland. The polecat's identity is the actual bead ID; the label shown above it is the real `claimed_by` agent handle from the API. If you see a polecat labeled `@sjarmak` heading toward a bead, that's a real agent working that real task.
+
+What's fabricated is the motion itself — walking speed, mining animation, trips to the refinery. These are visual interpolation running at 60fps between 30-second polls. The real agent is running Claude in a git worktree somewhere; the sim shows continuous movement as a stand-in for "work is happening."
+
+### How polling works
+
+The game polls the wasteland every 30 seconds. Each poll is a merge, not a reset:
+
+- **Existing beads** — metadata (title, project, claim status) is updated in place. Animation state is preserved. Mining progress (`remaining`) is left alone unless it hit zero, in which case it's restored so polecats keep cycling on still-open items.
+- **New beads** — added to the map, a feed entry fires once.
+- **Disappeared beads** — marked depleted, bead fades out, a "completed" feed entry fires.
+- **Unchanged data** — nothing changes. No duplicate feed entries, polecats keep walking where they were.
+
+Polecat assignments are reconciled on each poll: polecats are spawned for newly claimed beads and removed when their bead is no longer active. Between polls, polecats run a local state machine:
+
+```
+MOVING_TO_BEAD → MINING → MOVING_TO_REFINERY → DEPOSITING → (repeat)
+```
+
+If a polecat locally mines its bead to zero before the next poll, it idles briefly. When the poll restores the bead's remaining capacity (it's still open in the wasteland), the polecat re-targets automatically.
+
+### What the "merged" counter means
+
+Every time a polecat completes a deposit cycle at the refinery, the local merged count increments. This is a sim artifact — it reflects how many deposit cycles have completed locally, not how many PRs have actually merged in the real repositories. It's a rough proxy for activity level, not a literal merge count.
+
+---
+
 ## Spinning up a real gastown instance
 
 ### Prerequisites
