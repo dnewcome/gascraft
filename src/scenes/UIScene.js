@@ -121,13 +121,21 @@ export class UIScene extends Phaser.Scene {
       fontSize: '10px', fontFamily: 'Courier New', color: '#336633',
     });
 
+    // Store feed layout params for updateFeed
+    this._feedX = feedX;
+    this._feedY = feedY;
+    this._feedPad = feedPad;
+    this._feedLineH = feedLineH;
+    // Max chars that fit in the panel without wrapping (no wordWrap — truncate instead)
+    this._feedMaxChars = Math.floor((feedW - feedPad * 2) / 7);
+
     this.feedLines = [];
     for (let i = 0; i < feedLines; i++) {
       this.feedLines.push(this.add.text(
         feedX + feedPad,
         feedY + feedPad + i * feedLineH,
         '',
-        { fontSize: '11px', fontFamily: 'Courier New', color: '#336633', wordWrap: { width: feedW - feedPad * 2 } }
+        { fontSize: '11px', fontFamily: 'Courier New', color: '#336633' }
       ));
     }
 
@@ -257,26 +265,41 @@ export class UIScene extends Phaser.Scene {
   }
 
   updateFeed(s) {
-    const feed = s.feed ?? [];
+    const apiFeed = s.feed ?? [];
+
+    // Merge notable sim events between polls so the feed stays alive.
+    // s.events uses ticks; approximate ts from current tick distance.
+    const NOTABLE = /merged|depleted|stuck|discovered|spawned|convoy|nudged/i;
+    const MS_PER_TICK = 16;
+    const simFeed = (s.events ?? []).slice(-60)
+      .filter(e => NOTABLE.test(e.msg))
+      .map(e => ({
+        type: 'sim',
+        msg: e.msg,
+        ts: Date.now() - (s.tick - e.tick) * MS_PER_TICK,
+      }));
+
+    // Merge and sort oldest→newest, take last n
+    const combined = [...apiFeed, ...simFeed].sort((a, b) => a.ts - b.ts);
+
     const lines = this.feedLines;
     const n = lines.length;
-
-    // Show the last n entries, newest at bottom
-    const visible = feed.slice(-n);
+    const visible = combined.slice(-n);
+    const maxChars = this._feedMaxChars ?? 52;
 
     for (let i = 0; i < n; i++) {
       const entry = visible[i];
       if (!entry) { lines[i].setText('').setAlpha(0); continue; }
 
-      const age = (Date.now() - entry.ts) / 1000; // seconds
+      const age = (Date.now() - entry.ts) / 1000;
       const isNew = age < 2;
       const alpha = Math.max(0.15, 1 - age / 120);
+      const text = formatFeedLine(entry, maxChars);
 
-      lines[i].setText(formatFeedLine(entry));
+      lines[i].setText(text);
       lines[i].setColor(feedColor(entry.type));
       lines[i].setAlpha(isNew ? 1 : alpha);
 
-      // Flash new lines bright white briefly
       if (isNew && entry.ts !== lines[i]._lastTs) {
         lines[i]._lastTs = entry.ts;
         this.tweens.add({
@@ -426,13 +449,15 @@ function feedColor(type) {
     case 'claimed': return '#aaaaaa';
     case 'done':    return '#44aaff';
     case 'rig':     return '#8888ff';
+    case 'sim':     return '#336655'; // sim events — dimmer green
     default:        return '#44ff88'; // feature / unknown
   }
 }
 
-function formatFeedLine(entry) {
+function formatFeedLine(entry, maxChars = 52) {
   const time = new Date(entry.ts).toTimeString().slice(0, 8);
-  return `${time}  ${entry.msg}`;
+  const line = `${time}  ${entry.msg}`;
+  return line.length > maxChars ? line.slice(0, maxChars - 1) + '…' : line;
 }
 
 function makeButton(scene, x, y, label, onClick) {
