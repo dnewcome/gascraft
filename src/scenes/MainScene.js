@@ -58,11 +58,11 @@ const C = {
   highlight:   0x334422,
 
   // Outpost (wasteland rig)
-  outpostTop:   0x1a1a2d,
-  outpostLeft:  0x0f0f1a,
-  outpostRight: 0x08080f,
-  outpostRoof:  0x2d2d4a,
-  outpostAccent:0x8888ff,
+  outpostTop:   0x1e1e3a,
+  outpostLeft:  0x141428,
+  outpostRight: 0x0c0c1e,
+  outpostRoof:  0x3a3a6e,
+  outpostAccent:0x8899ff,
 
   // Bead type variants
   beadFeature: 0x00ffaa,  // cyan-green
@@ -106,7 +106,9 @@ export class MainScene extends Phaser.Scene {
 
     // Building graphics (mostly static, redrawn only on state change)
     this.buildingGraphics = this.add.graphics();
+    this.outpostGraphics  = this.add.graphics();
     this.layerBuildings.add(this.buildingGraphics);
+    this.layerBuildings.add(this.outpostGraphics);
     this.drawBuildings();
 
     // Bead graphics (redrawn each frame for animation)
@@ -206,13 +208,21 @@ export class MainScene extends Phaser.Scene {
   }
 
   drawBuildings() {
+    // Static buildings (rig, refinery) — drawn once at create and when map changes
     const g = this.buildingGraphics;
     g.clear();
-
     for (const b of this.simState.buildings) {
       if (b.type === 'rig') this.drawRig(g, b);
       else if (b.type === 'refinery') this.drawRefinery(g, b);
-      else if (b.type === 'outpost') this.drawOutpost(g, b);
+    }
+  }
+
+  drawOutposts(time) {
+    // Outposts are animated (pulse) and arrive dynamically via API polls
+    const g = this.outpostGraphics;
+    g.clear();
+    for (const b of this.simState.buildings) {
+      if (b.type === 'outpost') this.drawOutpost(g, b, time);
     }
   }
 
@@ -271,19 +281,32 @@ export class MainScene extends Phaser.Scene {
     g.fillCircle(base.x + TW / 2, base.y - bldH - 20, 4);
   }
 
-  drawOutpost(g, b) {
+  drawOutpost(g, b, time) {
     const { gx, gy } = b;
     this.drawTile(g, gx, gy, C.outpostTop, C.outpostLeft, C.outpostRight);
     const bldH = 18;
     this.drawRaisedBox(g, gx, gy, bldH, C.outpostRoof, C.outpostLeft, C.outpostRight);
-    // Small beacon on top
+
     const top = this.gToS(gx, gy);
     const cx = top.x + TW / 2;
     const cy = top.y - bldH - 6;
-    g.fillStyle(C.outpostAccent, 0.7);
-    g.fillRect(cx - 1, cy - 8, 2, 8);
-    g.fillStyle(C.outpostAccent, 0.9);
-    g.fillCircle(cx, cy - 8, 2);
+
+    // Antenna mast
+    g.fillStyle(C.outpostAccent, 0.6);
+    g.fillRect(cx - 1, cy - 14, 2, 14);
+
+    // Pulsing glow ring
+    const pulse = 0.12 + 0.08 * Math.sin(time * 0.003 + gx);
+    g.fillStyle(C.outpostAccent, pulse);
+    g.fillCircle(cx, cy - 14, 10);
+
+    // Beacon dot
+    g.fillStyle(C.outpostAccent, 0.95);
+    g.fillCircle(cx, cy - 14, 4);
+
+    // Bright core
+    g.fillStyle(0xffffff, 0.6);
+    g.fillCircle(cx, cy - 14, 1.5);
   }
 
   drawRaisedBox(g, gx, gy, raised, topColor, leftColor, rightColor) {
@@ -333,6 +356,7 @@ export class MainScene extends Phaser.Scene {
     tick(this.simState);
 
     // Redraw dynamic layers
+    this.drawOutposts(time);
     this.drawBeads(time);
     this.drawUnits(time);
 
