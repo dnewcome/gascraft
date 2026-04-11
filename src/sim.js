@@ -40,32 +40,32 @@ export function createSim() {
   // Deacon — roving monitor
   state.deacon = { id: 'deacon', gx: 10, gy: 14, label: 'DEACON', state: 'patrolling', path: [] };
 
-  // Beads come from the wasteland API — none seeded here
-
-  // Spawn initial polecats
-  for (let i = 0; i < 5; i++) {
-    state.polecats.push(makePolecat(state));
-  }
+  // Beads and polecats come from the wasteland API — none seeded here
 
   return state;
 }
 
-function makePolecat(state) {
-  const rig = state.buildings.find(b => b.type === 'rig');
-  return {
-    id: uid('pc'),
+// Spawn one agent polecat for a claimed wasteland bead.
+// Called by mapper whenever a bead transitions to claimed.
+export function spawnAgentPolecat(state, bead) {
+  const rig = state.buildings.find(b => b.type === 'rig') ?? { gx: 10, gy: 10 };
+  bead.assigned = `agent-${bead.id}`;
+  state.polecats.push({
+    id: `agent-${bead.id}`,
+    beadId: bead.id,          // stable reference — targetBead may clear temporarily
     gx: rig.gx + 1 + Math.random(),
     gy: rig.gy + 1 + Math.random(),
-    state: POLECAT_STATES.IDLE,
-    targetBead: null,
+    state: POLECAT_STATES.MOVING_TO_BEAD,
+    targetBead: bead.id,
     carrying: 0,
     stuckTimer: 0,
     speed: 0.04 + Math.random() * 0.02,
     mineTimer: 0,
     depositTimer: 0,
-    idleTimer: Math.floor(Math.random() * 60), // stagger spawns
-    label: null,
-  };
+    idleTimer: 0,
+    label: bead.claimedBy,    // real agent handle shown in roster + tooltip
+    isAgent: true,
+  });
 }
 
 // ── Simulation tick (called ~60fps by game loop) ───────────────────
@@ -88,6 +88,8 @@ function tickPolecats(state) {
   for (const pc of state.polecats) {
     switch (pc.state) {
       case POLECAT_STATES.IDLE: {
+        // Agent polecats don't wander — they wait to be cleaned up by mapper
+        if (pc.isAgent) break;
         if (pc.idleTimer > 0) { pc.idleTimer--; break; }
         // Find nearest available bead
         const bead = nearestAvailableBead(state, pc);
@@ -167,8 +169,14 @@ function tickPolecats(state) {
           state.apiTokens -= Math.floor(pc.carrying / 5); // cost tokens to merge
           pc.carrying = 0;
           pc.depositTimer = 0;
-          pc.state = POLECAT_STATES.RETURNING;
           log(state, `merged → ${state.resources} total`);
+          if (pc.isAgent) {
+            // Work is still open — cycle back to the same bead
+            pc.targetBead = pc.beadId;
+            pc.state = POLECAT_STATES.MOVING_TO_BEAD;
+          } else {
+            pc.state = POLECAT_STATES.RETURNING;
+          }
         }
         break;
       }

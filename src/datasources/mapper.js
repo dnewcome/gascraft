@@ -1,6 +1,8 @@
 // Maps live wasteland data into simState entities.
 // Preserves existing animation state for entities already in the sim.
 
+import { spawnAgentPolecat } from '../sim.js';
+
 // Deterministic grid position from a string ID — same ID always lands on same tile.
 function hashPos(str, mapW = 22, mapH = 22, margin = 1) {
   let h = 2166136261;
@@ -108,6 +110,29 @@ function applyBeads(simState, wantedRows) {
       b.depleted = true;
       b.remaining = 0;
       feed(simState, 'done', `completed: ${truncate(b.label ?? b.id, 40)}`);
+    }
+  }
+
+  reconcileAgents(simState);
+}
+
+function reconcileAgents(simState) {
+  // One polecat per claimed bead, keyed by bead ID.
+  // Remove agents whose bead completed; spawn agents for newly claimed beads.
+  const claimedBeads = simState.beads.filter(b => b.isClaimed && !b.depleted);
+  const claimedIds = new Set(claimedBeads.map(b => b.id));
+
+  // Remove agent polecats for beads no longer claimed/active
+  simState.polecats = simState.polecats.filter(pc =>
+    !pc.isAgent || claimedIds.has(pc.beadId)
+  );
+
+  // Spawn for newly claimed beads that don't have an agent yet
+  const agentBeadIds = new Set(simState.polecats.filter(pc => pc.isAgent).map(pc => pc.beadId));
+  for (const bead of claimedBeads) {
+    if (!agentBeadIds.has(bead.id)) {
+      spawnAgentPolecat(simState, bead);
+      feed(simState, 'sim', `agent dispatched: ${bead.claimedBy} → ${truncate(bead.label, 30)}`);
     }
   }
 }
