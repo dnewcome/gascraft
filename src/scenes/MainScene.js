@@ -347,24 +347,24 @@ export class MainScene extends Phaser.Scene {
     return { gx, gy };
   }
 
-  // Convert a grid position to final screen coords (for tooltip anchor)
-  gridToScreen(gx, gy) {
+  // Convert grid position to screen coords, anchored to the visual top of
+  // an entity. localLift = how many local pixels above tile center the top is.
+  gridToScreen(gx, gy, localLift = 0) {
     const local = this.gToS(gx, gy);
+    const cx = local.x + TW / 2;        // tile centre x (local)
+    const cy = local.y + TH / 2;        // tile centre y (local)
     return {
-      x: local.x * this.world.scaleX + this.world.x,
-      y: local.y * this.world.scaleY + this.world.y,
+      x:  cx              * this.world.scaleX + this.world.x,
+      y: (cy - localLift) * this.world.scaleY + this.world.y,
     };
   }
 
   updateTooltip() {
     const { gx, gy } = this.ptrToGrid();
-    const s = this.simState;
-    const hit = findHover(gx, gy, s);
-
+    const hit = findHover(gx, gy, this.simState);
     if (hit) {
-      const screen = this.gridToScreen(hit.gx, hit.gy);
-      // Offset upward so bubble sits above the entity
-      this.tooltip.show(screen.x, screen.y - 30 * this.world.scaleY, hit.lines, hit.color);
+      const screen = this.gridToScreen(hit.gx, hit.gy, hit.lift ?? 20);
+      this.tooltip.show(screen.x, screen.y, hit.lines, hit.color);
     } else {
       this.tooltip.hide();
     }
@@ -559,14 +559,14 @@ function findHover(gx, gy, s) {
         carry,
         pc.label ? `convoy: ${pc.label}` : null,
       ].filter(Boolean);
-      return { gx: pc.gx, gy: pc.gy, lines, color: pc.carrying > 0 ? '#ffaa00' : '#ff6600' };
+      return { gx: pc.gx, gy: pc.gy, lift: 28, lines, color: pc.carrying > 0 ? '#ffaa00' : '#ff6600' };
     }
   }
 
   // Mayor
   if (s.mayor && gridDist(gx, gy, s.mayor.gx, s.mayor.gy) < UNIT_R) {
     return {
-      gx: s.mayor.gx, gy: s.mayor.gy,
+      gx: s.mayor.gx, gy: s.mayor.gy, lift: 34,
       lines: ['MAYOR', 'commanding', 'coordinates all polecats'],
       color: '#ffd700',
     };
@@ -575,7 +575,7 @@ function findHover(gx, gy, s) {
   // Deacon
   if (s.deacon && gridDist(gx, gy, s.deacon.gx, s.deacon.gy) < UNIT_R) {
     return {
-      gx: s.deacon.gx, gy: s.deacon.gy,
+      gx: s.deacon.gx, gy: s.deacon.gy, lift: 28,
       lines: ['DEACON', 'patrolling', 'detects & nudges stuck polecats'],
       color: '#4488ff',
     };
@@ -593,7 +593,7 @@ function findHover(gx, gy, s) {
         `effort: ${b.value}  remaining: ${b.remaining}`,
       ].filter(Boolean);
       const color = { bug: '#ff5555', docs: '#ffdd44', design: '#cc66ff' }[b.beadType] ?? '#44ffaa';
-      return { gx: b.gx, gy: b.gy, lines, color };
+      return { gx: b.gx, gy: b.gy, lift: 26, lines, color };
     }
   }
 
@@ -603,23 +603,26 @@ function findHover(gx, gy, s) {
     const cy = b.gy + (b.height ?? 1) / 2;
     if (gridDist(gx, gy, cx, cy) < BLDG_R) {
       if (b.type === 'rig') {
+        // bldH=40 + antenna tip ~20 above tile centre
         return {
-          gx: cx, gy: cy,
+          gx: cx, gy: cy, lift: 70,
           lines: ['RIG', 'command center', 'spawns polecats'],
           color: '#55ff55',
         };
       }
       if (b.type === 'refinery') {
+        // bldH=30 + chimney ~20
         return {
-          gx: cx, gy: cy,
+          gx: cx, gy: cy, lift: 58,
           lines: ['REFINERY', 'merge queue', 'processes completed work'],
           color: '#ff9900',
         };
       }
       if (b.type === 'outpost') {
+        // bldH=18 + beacon ~8
         const seen = b.lastSeen ? relativeTime(b.lastSeen) : 'unknown';
         return {
-          gx: cx, gy: cy,
+          gx: cx, gy: cy, lift: 36,
           lines: [
             b.label || b.handle,
             `@${b.handle}`,
