@@ -27,10 +27,19 @@ export function applyWasteland(simState, { wanted, rigs, completions }) {
   if (simState.feed.length > 200) simState.feed = simState.feed.slice(-200);
 }
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isStale(lastSeen) {
+  if (!lastSeen) return true;
+  return Date.now() - new Date(lastSeen).getTime() > SEVEN_DAYS_MS;
+}
+
 function applyRigs(simState, rigRows) {
   const existingBuildings = new Map(simState.buildings.map(b => [b.id, b]));
 
   for (const row of rigRows) {
+    if (isStale(row.last_seen)) continue;
+
     const id = `wl-rig-${row.handle}`;
     if (existingBuildings.has(id)) {
       existingBuildings.get(id).label = row.display_name || row.handle;
@@ -55,6 +64,11 @@ function applyRigs(simState, rigRows) {
       feed(simState, 'rig', `rig registered: ${row.handle}`);
     }
   }
+
+  // Remove outposts that have gone stale since last poll
+  simState.buildings = simState.buildings.filter(b =>
+    b.type !== 'outpost' || !isStale(b.lastSeen)
+  );
 }
 
 function applyBeads(simState, wantedRows) {
