@@ -100,7 +100,7 @@ Two rows of mini-icons identifying every entity type on the map. Hover any entit
 
 The map shows the current state of the wasteland rendered as an isometric grid. Entities move and animate in real time.
 
-- **Beads** pulse and glow on the ground. Their color matches their type. When a polecat reaches one, it shrinks as it's "mined."
+- **Beads** pulse and glow on the ground. Their color matches their type. Each bead node has a `remaining` capacity value that decreases as polecats mine it. This single value is currently encoded three ways simultaneously — gem size, glow halo radius, and a small horizontal bar below the gem. All three shrink together as the node depletes. This redundancy is intentional: the plan is to repurpose these three visual channels for different metrics (e.g. effort level, age, claim status) once the right data is available. When `remaining` hits zero the bead disappears.
 - **Polecats** walk between beads and the refinery following a simple state machine. Their path is simulated — not directly from API data.
 - **Buildings** are fixed. The rig is the origin; the refinery is where completed work lands.
 - **Outposts** are real rigs from the wasteland database, plotted at deterministic grid positions derived from their handle string.
