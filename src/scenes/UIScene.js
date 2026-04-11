@@ -84,16 +84,23 @@ export class UIScene extends Phaser.Scene {
       lineSpacing: 4,
     });
 
+    // ── Toast notification ───────────────────────────────────────────
+    this.toast = this.add.text(W / 2, H - 60, '', {
+      fontSize: '12px', fontFamily: 'Courier New', color: '#ff4444',
+      backgroundColor: '#1a0000', padding: { x: 10, y: 5 },
+    }).setOrigin(0.5, 1).setAlpha(0).setDepth(100);
+
     // ── Command buttons ──────────────────────────────────────────────
-    const btnY = panelY + panelH + 8;
     // Spawn polecat button
     this.btnSpawn = makeButton(this, 20, H - 44, 'SPAWN POLECAT  [50 tokens]', () => {
-      spawnPolecat(this.simState);
+      this.showToast('not implemented yet — bridge to live gastown required');
+      this.simState.events.push({ tick: this.simState.tick, msg: 'SPAWN POLECAT: not implemented — gastown bridge required' });
     });
 
     // Create convoy button
     this.btnConvoy = makeButton(this, 240, H - 44, 'FORM CONVOY', () => {
-      createConvoy(this.simState);
+      this.showToast('not implemented yet — bridge to live gastown required');
+      this.simState.events.push({ tick: this.simState.tick, msg: 'FORM CONVOY: not implemented — gastown bridge required' });
     });
 
     // ── Legend bar (drawn below the feed panel, above bottom panel) ──
@@ -142,6 +149,19 @@ export class UIScene extends Phaser.Scene {
     // Track how many feed entries we've shown so we only animate new ones
     this._feedShown = 0;
 
+  }
+
+  showToast(msg) {
+    this.tweens.killTweensOf(this.toast);
+    this.toast.setText(`⚠ ${msg}`);
+    this.toast.setAlpha(1);
+    this.tweens.add({
+      targets: this.toast,
+      alpha: 0,
+      delay: 2000,
+      duration: 600,
+      ease: 'Cubic.easeIn',
+    });
   }
 
   drawLegend(W, _panelY) {
