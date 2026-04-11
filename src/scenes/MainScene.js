@@ -613,14 +613,14 @@ function findHover(gx, gy, s) {
         state,
         carry,
       ].filter(Boolean);
-      return { gx: pc.gx, gy: pc.gy, lift: 28, lines, color: pc.carrying > 0 ? '#ffaa00' : '#ff6600' };
+      return { gx: pc.gx, gy: pc.gy, lift: 0, lines, color: pc.carrying > 0 ? '#ffaa00' : '#ff6600' };
     }
   }
 
   // Mayor
   if (s.mayor && gridDist(gx, gy, s.mayor.gx, s.mayor.gy) < UNIT_R) {
     return {
-      gx: s.mayor.gx, gy: s.mayor.gy, lift: 34,
+      gx: s.mayor.gx, gy: s.mayor.gy, lift: 0,
       lines: ['MAYOR', 'commanding', 'coordinates all polecats'],
       color: '#ffd700',
     };
@@ -629,7 +629,7 @@ function findHover(gx, gy, s) {
   // Deacon
   if (s.deacon && gridDist(gx, gy, s.deacon.gx, s.deacon.gy) < UNIT_R) {
     return {
-      gx: s.deacon.gx, gy: s.deacon.gy, lift: 28,
+      gx: s.deacon.gx, gy: s.deacon.gy, lift: 0,
       lines: ['DEACON', 'patrolling', 'detects & nudges stuck polecats'],
       color: '#4488ff',
     };
@@ -647,7 +647,7 @@ function findHover(gx, gy, s) {
         `effort: ${b.value}  remaining: ${b.remaining}`,
       ].filter(Boolean);
       const color = { bug: '#ff5555', docs: '#ffdd44', design: '#cc66ff' }[b.beadType] ?? '#44ffaa';
-      return { gx: b.gx, gy: b.gy, lift: 26, lines, color };
+      return { gx: b.gx, gy: b.gy, lift: 0, lines, color };
     }
   }
 
@@ -659,7 +659,7 @@ function findHover(gx, gy, s) {
       if (b.type === 'rig') {
         // bldH=40 + antenna tip ~20 above tile centre
         return {
-          gx: cx, gy: cy, lift: 70,
+          gx: cx, gy: cy, lift: 30,
           lines: ['RIG', 'command center', 'spawns polecats'],
           color: '#55ff55',
         };
@@ -667,7 +667,7 @@ function findHover(gx, gy, s) {
       if (b.type === 'refinery') {
         // bldH=30 + chimney ~20
         return {
-          gx: cx, gy: cy, lift: 58,
+          gx: cx, gy: cy, lift: 30,
           lines: ['REFINERY', 'merge queue', 'processes completed work'],
           color: '#ff9900',
         };
@@ -676,7 +676,7 @@ function findHover(gx, gy, s) {
         // bldH=18 + beacon ~8
         const seen = b.lastSeen ? relativeTime(b.lastSeen) : 'unknown';
         return {
-          gx: cx, gy: cy, lift: 36,
+          gx: cx, gy: cy, lift: 54,
           lines: [
             b.label || b.handle,
             `@${b.handle}`,
