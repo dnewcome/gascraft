@@ -79,14 +79,8 @@ export class UIScene extends Phaser.Scene {
       createConvoy(this.simState);
     });
 
-    // ── Bead type legend ────────────────────────────────────────────
-    const legX = W - 340;
-    const legY = panelY + 8;
-    this.add.text(legX, legY,      '◆ feature', { fontSize: '10px', fontFamily: 'Courier New', color: '#00ffaa' });
-    this.add.text(legX, legY + 14, '◆ bug',     { fontSize: '10px', fontFamily: 'Courier New', color: '#ff4444' });
-    this.add.text(legX, legY + 28, '◆ docs',    { fontSize: '10px', fontFamily: 'Courier New', color: '#ffdd00' });
-    this.add.text(legX, legY + 42, '◆ design',  { fontSize: '10px', fontFamily: 'Courier New', color: '#cc44ff' });
-    this.add.text(legX, legY + 56, '◆ claimed', { fontSize: '10px', fontFamily: 'Courier New', color: '#888888' });
+    // ── Legend bar (drawn below the feed panel, above bottom panel) ──
+    this.drawLegend(W, panelY);
 
     // ── Wasteland live feed panel ────────────────────────────────────
     const feedW = 380;
@@ -123,6 +117,92 @@ export class UIScene extends Phaser.Scene {
     // Track how many feed entries we've shown so we only animate new ones
     this._feedShown = 0;
 
+  }
+
+  drawLegend(W, panelY) {
+    const BAR_H = 30;
+    const barY  = panelY - BAR_H - 2;
+
+    // Background bar
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.78);
+    bg.fillRect(0, barY, W, BAR_H);
+    bg.lineStyle(1, 0x223322, 1);
+    bg.strokeRect(0, barY, W, BAR_H);
+
+    const cy = barY + BAR_H / 2;  // vertical centre of bar
+    const g  = this.add.graphics();
+
+    const ITEMS = [
+      // Buildings
+      { icon: 'rig',      label: 'rig',             color: '#55ff55' },
+      { icon: 'refinery', label: 'refinery',         color: '#ff9900' },
+      { icon: 'outpost',  label: 'outpost',          color: '#8888ff' },
+      // Units
+      { icon: 'mayor',    label: 'mayor',            color: '#ffd700' },
+      { icon: 'polecat',  label: 'polecat',          color: '#ff6600' },
+      { icon: 'carrying', label: 'carrying',         color: '#ffaa00' },
+      { icon: 'stuck',    label: 'stuck',            color: '#ff2222' },
+      { icon: 'deacon',   label: 'deacon',           color: '#4488ff' },
+      // Beads
+      { icon: 'feature',  label: 'feature',          color: '#00ffaa' },
+      { icon: 'bug',      label: 'bug',              color: '#ff5555' },
+      { icon: 'docs',     label: 'docs',             color: '#ffdd44' },
+      { icon: 'design',   label: 'design',           color: '#cc44ff' },
+      { icon: 'claimed',  label: 'claimed',          color: '#888888' },
+    ];
+
+    // Measure total width to centre the legend
+    const ICON_W = 14;
+    const GAP    = 6;   // icon → text
+    const SEP    = 20;  // item → item
+    const SECTION_SEP = 32;
+
+    // Pre-measure text widths with a temp text object
+    const tmpTxt = this.add.text(-9999, -9999, '', { fontSize: '11px', fontFamily: 'Courier New' });
+    const sections = [
+      ITEMS.slice(0, 3),   // buildings
+      ITEMS.slice(3, 8),   // units
+      ITEMS.slice(8),      // beads
+    ];
+
+    // Calculate total width
+    let totalW = 0;
+    sections.forEach((sec, si) => {
+      if (si > 0) totalW += SECTION_SEP;
+      sec.forEach((item, i) => {
+        tmpTxt.setText(item.label);
+        item._tw = tmpTxt.width;
+        totalW += ICON_W + GAP + item._tw;
+        if (i < sec.length - 1) totalW += SEP;
+      });
+    });
+    tmpTxt.destroy();
+
+    let x = (W - totalW) / 2;
+
+    sections.forEach((sec, si) => {
+      if (si > 0) x += SECTION_SEP;
+
+      // Thin section divider
+      if (si > 0) {
+        g.lineStyle(1, 0x334433, 0.6);
+        g.lineBetween(x - SECTION_SEP / 2, barY + 6, x - SECTION_SEP / 2, barY + BAR_H - 6);
+      }
+
+      sec.forEach((item, i) => {
+        const ix = x + ICON_W / 2;
+        drawLegendIcon(g, item.icon, ix, cy, item.color);
+
+        this.add.text(x + ICON_W + GAP, cy - 7, item.label, {
+          fontSize: '11px', fontFamily: 'Courier New',
+          color: item.color,
+        });
+
+        x += ICON_W + GAP + item._tw;
+        if (i < sec.length - 1) x += SEP;
+      });
+    });
   }
 
   update() {
@@ -219,6 +299,127 @@ function hudStyle() {
 function tokenBarStr(val, max) {
   const filled = Math.round((val / max) * 10);
   return '[' + '█'.repeat(filled) + '░'.repeat(10 - filled) + ']';
+}
+
+function drawLegendIcon(g, type, cx, cy, hexColor) {
+  const col = Phaser.Display.Color.HexStringToColor(hexColor).color;
+  const dark = Phaser.Display.Color.HexStringToColor(hexColor);
+  dark.darken(60);
+  const darkCol = dark.color;
+
+  switch (type) {
+    case 'rig':
+    case 'refinery': {
+      // Mini isometric box
+      const w = 7, h = 4, raised = 7;
+      // left face
+      g.fillStyle(darkCol, 1);
+      g.fillPoints([
+        { x: cx - w, y: cy + h },
+        { x: cx - w, y: cy + h - raised },
+        { x: cx,     y: cy + h * 2 - raised },
+        { x: cx,     y: cy + h * 2 },
+      ], true);
+      // right face
+      g.fillStyle(Phaser.Display.Color.GetColor(
+        ...Phaser.Display.Color.HexStringToColor(hexColor).darken(40).color32 ? [0,0,0] : [50,50,50]
+      ), 1);
+      // simpler: just slightly lighter dark
+      g.fillStyle(darkCol, 0.7);
+      g.fillPoints([
+        { x: cx,     y: cy + h * 2 },
+        { x: cx,     y: cy + h * 2 - raised },
+        { x: cx + w, y: cy + h - raised },
+        { x: cx + w, y: cy + h },
+      ], true);
+      // top face
+      g.fillStyle(col, 1);
+      g.fillPoints([
+        { x: cx,     y: cy - raised },
+        { x: cx + w, y: cy + h - raised },
+        { x: cx,     y: cy + h * 2 - raised },
+        { x: cx - w, y: cy + h - raised },
+      ], true);
+      break;
+    }
+    case 'outpost': {
+      // Mini beacon: small box + dot on top
+      const w = 5, h = 3, raised = 5;
+      g.fillStyle(darkCol, 1);
+      g.fillRect(cx - w, cy + h - raised, w, raised);
+      g.fillStyle(col, 1);
+      g.fillPoints([
+        { x: cx,     y: cy - raised - 1 },
+        { x: cx + w, y: cy + h - raised - 1 },
+        { x: cx,     y: cy + h * 2 - raised - 1 },
+        { x: cx - w, y: cy + h - raised - 1 },
+      ], true);
+      g.fillStyle(col, 0.9);
+      g.fillCircle(cx, cy - raised - 4, 2);
+      break;
+    }
+    case 'mayor': {
+      const s = 6;
+      g.fillStyle(col, 0.25);
+      g.fillCircle(cx, cy, s * 2);
+      g.fillStyle(col, 1);
+      g.fillPoints([
+        { x: cx,     y: cy - s },
+        { x: cx + s, y: cy },
+        { x: cx,     y: cy + s },
+        { x: cx - s, y: cy },
+      ], true);
+      // crown
+      g.fillStyle(0xffffff, 0.8);
+      g.fillTriangle(cx - 3, cy - s, cx, cy - s - 4, cx + 3, cy - s);
+      break;
+    }
+    case 'polecat':
+    case 'carrying':
+    case 'stuck': {
+      const s = 5;
+      g.fillStyle(col, 1);
+      g.fillPoints([
+        { x: cx,     y: cy - s },
+        { x: cx + s, y: cy },
+        { x: cx,     y: cy + s },
+        { x: cx - s, y: cy },
+      ], true);
+      if (type === 'carrying') {
+        g.fillStyle(0x00ffaa, 0.9);
+        g.fillCircle(cx, cy - s - 2, 2);
+      }
+      if (type === 'stuck') {
+        g.fillStyle(0xff0000, 0.9);
+        g.fillRect(cx - 3, cy - s - 6, 6, 4);
+      }
+      break;
+    }
+    case 'deacon': {
+      const s = 6;
+      g.lineStyle(1, col, 0.4);
+      g.strokeCircle(cx, cy, s + 2);
+      g.fillStyle(col, 1);
+      g.fillTriangle(cx, cy - s, cx + s, cy + s * 0.6, cx - s, cy + s * 0.6);
+      break;
+    }
+    default: {
+      // Bead / crystal diamond
+      const s = 6;
+      g.fillStyle(col, 0.25);
+      g.fillCircle(cx, cy, s + 2);
+      g.fillStyle(col, 0.9);
+      g.fillPoints([
+        { x: cx,         y: cy - s },
+        { x: cx + s / 2, y: cy },
+        { x: cx,         y: cy + s * 0.6 },
+        { x: cx - s / 2, y: cy },
+      ], true);
+      g.fillStyle(0xffffff, 0.5);
+      g.fillCircle(cx, cy - s * 0.2, s * 0.22);
+      break;
+    }
+  }
 }
 
 function feedColor(type) {
