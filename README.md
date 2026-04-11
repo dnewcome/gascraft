@@ -1,8 +1,12 @@
 # GASCRAFT
 
-An isometric RTS visualization of [Gastown](https://github.com/gastownhall/gastown) — the multi-agent AI coding orchestration system. You are the mayor. Polecats mine beads, deposit them at the refinery, and the deacon patrols for stuck agents.
+An isometric RTS visualization of the [Gastown wasteland](https://wasteland.gastownhall.ai/) — the shared public database of AI coding work items managed by the Gastown multi-agent orchestration system.
 
-The game is a real control interface, not just eye candy. The simulation runs standalone today; the gastown bridge will wire it to a live instance.
+**What you're watching in real time:** work items (beads) appear as they're posted to the wasteland, change color when claimed by an agent, and disappear when completed. Rigs are the real project repositories registered in the system. The wasteland feed (lower right) shows a live ticker of activity across all gastown instances worldwide.
+
+The polecat agents and their movement are a simulation layer — a predictive visualization that runs at 60fps between 30-second data polls from [DoltHub](https://www.dolthub.com/repositories/hop/wl-commons). The sim keeps things visually alive while the real data loads.
+
+The game will eventually be a real control interface: spawn, nudge, and direct agents in your own gastown instance. That bridge isn't wired yet — today it's a live read-only visualization of the public wasteland.
 
 ---
 

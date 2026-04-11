@@ -47,13 +47,14 @@ export class UIScene extends Phaser.Scene {
       color: '#55ff55', fontStyle: 'bold',
     });
 
-    // HUD counters
-    this.txtResources  = this.add.text(160, 8, '', hudStyle());
-    this.txtPolecats   = this.add.text(340, 8, '', hudStyle());
-    this.txtTokens     = this.add.text(520, 8, '', hudStyle());
-    this.txtBeads      = this.add.text(680, 8, '', hudStyle());
-    this.txtTick       = this.add.text(W - 200, 8, '', { ...hudStyle(), color: '#446644' });
-    this.txtLive       = this.add.text(W - 60,  8, '', { fontSize: '11px', fontFamily: 'Courier New', color: '#ff4444' });
+    // HUD counters — percentage-based x so items don't collide on narrow windows
+    this.txtResources  = this.add.text(Math.round(W * 0.13), 8, '', hudStyle());
+    this.txtPolecats   = this.add.text(Math.round(W * 0.27), 8, '', hudStyle());
+    this.txtTokens     = this.add.text(Math.round(W * 0.43), 8, '', hudStyle());
+    this.txtBeads      = this.add.text(Math.round(W * 0.67), 8, '', hudStyle());
+    // tick + live stacked at far right
+    this.txtLive       = this.add.text(W - 72,  8,  '', { fontSize: '11px', fontFamily: 'Courier New', color: '#ff4444' });
+    this.txtTick       = this.add.text(W - 72,  27, '', { fontSize: '10px', fontFamily: 'Courier New', color: '#335533' });
 
     // ── Bottom panel ─────────────────────────────────────────────────
     const panelH = 140;
@@ -136,24 +137,24 @@ export class UIScene extends Phaser.Scene {
   }
 
   drawLegend(W, _panelY) {
-    // Fixed below the HUD bar — nothing can overlap it
-    const BAR_H = 28;
+    // Two-row legend so all items fit on narrow windows.
+    // Row 1: buildings + units  |  Row 2: bead types
+    const BAR_H = 44;
     const barY  = 46;
 
-    const ITEMS = [
-      // section: buildings
+    const ROW1 = [
       { icon: 'rig',      label: 'rig',      color: '#55ff55' },
       { icon: 'refinery', label: 'refinery', color: '#ff9900' },
       { icon: 'outpost',  label: 'outpost',  color: '#8888ff' },
-      null, // divider
-      // section: units
+      null,
       { icon: 'mayor',    label: 'mayor',    color: '#ffd700' },
       { icon: 'polecat',  label: 'polecat',  color: '#ff6600' },
       { icon: 'carrying', label: 'carrying', color: '#ffaa00' },
       { icon: 'stuck',    label: 'stuck',    color: '#ff2222' },
       { icon: 'deacon',   label: 'deacon',   color: '#4488ff' },
-      null, // divider
-      // section: beads
+    ];
+
+    const ROW2 = [
       { icon: 'feature',  label: 'feature',  color: '#00ffaa' },
       { icon: 'bug',      label: 'bug',      color: '#ff5555' },
       { icon: 'docs',     label: 'docs',     color: '#ffdd44' },
@@ -161,17 +162,16 @@ export class UIScene extends Phaser.Scene {
       { icon: 'claimed',  label: 'claimed',  color: '#888888' },
     ];
 
-    // Courier New 11px ≈ 7px per char (monospace) — precompute fixed widths
-    const CHAR_W   = 7;
-    const ICON_W   = 14;
-    const GAP      = 5;   // icon → label
-    const SEP      = 16;  // item → item
-    const DIV_W    = 24;  // divider gap
+    // Courier New 11px ≈ 7px per char
+    const CHAR_W = 7;
+    const ICON_W = 12;
+    const GAP    = 4;
+    const SEP    = 10;
+    const DIV_W  = 16;
 
-    // Total width
-    let totalW = 0;
-    for (const item of ITEMS) {
-      totalW += item ? ICON_W + GAP + item.label.length * CHAR_W + SEP : DIV_W;
+    function rowWidth(items) {
+      return items.reduce((s, it) =>
+        s + (it ? ICON_W + GAP + it.label.length * CHAR_W + SEP : DIV_W), 0) - SEP;
     }
 
     const bg = this.add.graphics().setDepth(50);
@@ -180,27 +180,29 @@ export class UIScene extends Phaser.Scene {
     bg.lineStyle(1, 0x1a2e1a, 1);
     bg.strokeRect(0, barY, W, BAR_H);
 
-    const g  = this.add.graphics().setDepth(51);
-    const cy = barY + BAR_H / 2;
-    let x = Math.round((W - totalW) / 2);
+    const g   = this.add.graphics().setDepth(51);
+    const cy1 = barY + 12;   // row 1 center y
+    const cy2 = barY + 32;   // row 2 center y
 
-    for (const item of ITEMS) {
-      if (!item) {
-        // Divider line
-        g.lineStyle(1, 0x2a3a2a, 0.8);
-        g.lineBetween(x + DIV_W / 2, barY + 6, x + DIV_W / 2, barY + BAR_H - 6);
-        x += DIV_W;
-        continue;
+    const drawRow = (items, cy) => {
+      let x = Math.round((W - rowWidth(items)) / 2);
+      for (const item of items) {
+        if (!item) {
+          g.lineStyle(1, 0x2a3a2a, 0.8);
+          g.lineBetween(x + DIV_W / 2, barY + 4, x + DIV_W / 2, barY + BAR_H - 4);
+          x += DIV_W;
+          continue;
+        }
+        drawLegendIcon(g, item.icon, x + ICON_W / 2, cy, item.color);
+        this.add.text(x + ICON_W + GAP, cy - 7, item.label, {
+          fontSize: '11px', fontFamily: 'Courier New', color: item.color,
+        }).setDepth(52);
+        x += ICON_W + GAP + item.label.length * CHAR_W + SEP;
       }
+    };
 
-      drawLegendIcon(g, item.icon, x + ICON_W / 2, cy, item.color);
-
-      this.add.text(x + ICON_W + GAP, cy - 7, item.label, {
-        fontSize: '11px', fontFamily: 'Courier New', color: item.color,
-      }).setDepth(52);
-
-      x += ICON_W + GAP + item.label.length * CHAR_W + SEP;
-    }
+    drawRow(ROW1, cy1);
+    drawRow(ROW2, cy2);
   }
 
   update() {
@@ -295,8 +297,8 @@ function hudStyle() {
 }
 
 function tokenBarStr(val, max) {
-  const filled = Math.round((val / max) * 10);
-  return '[' + '█'.repeat(filled) + '░'.repeat(10 - filled) + ']';
+  const filled = Math.round((val / max) * 4);
+  return '[' + '█'.repeat(filled) + '░'.repeat(4 - filled) + ']';
 }
 
 function drawLegendIcon(g, type, cx, cy, hexColor) {
