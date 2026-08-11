@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { createSim } from './sim.js';
-import { startPolling } from './datasources/wasteland.js';
+import { startPolling } from './datasources/github.js';
 import { applyWasteland } from './datasources/mapper.js';
 import { MainScene as MainSceneBase } from './scenes/MainScene.js';
 import { UIScene as UISceneBase } from './scenes/UIScene.js';
@@ -10,10 +10,12 @@ const simState = createSim();
 // Start pulling live wasteland data immediately.
 // applyWasteland merges it into simState in-place — the game loop picks it up
 // on the next tick with no special wiring needed.
+// 60s rather than 30s: unauthenticated GitHub search allows 10 req/min per IP
+// and each poll spends 3.
 const stopPolling = startPolling((data) => {
   applyWasteland(simState, data);
   simState.lastFetch = data.ts;
-}, 30_000);
+}, 60_000);
 
 window.addEventListener('beforeunload', stopPolling);
 

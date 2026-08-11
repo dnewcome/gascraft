@@ -248,9 +248,16 @@ export class UIScene extends Phaser.Scene {
     this.txtBeads.setText(`◈ BEADS  ${activeBeads}/${realBeads.length}`);
     this.txtTick.setText(`tick ${s.tick}`);
 
-    if (s.liveData) {
-      const age = s.lastFetch ? Math.floor((Date.now() - s.lastFetch) / 1000) : '?';
-      this.txtLive.setText(`● LIVE ${age}s`).setColor('#44ff88');
+    if (s.liveData && s.lastFetch) {
+      // Polls can silently stop landing (GitHub rate limit, offline), so report
+      // the age of the data rather than the fact that a fetch once succeeded.
+      const secs = Math.floor((Date.now() - s.lastFetch) / 1000);
+      const label = secs < 90 ? `${secs}s` : `${Math.floor(secs / 60)}m`;
+      if (secs < 150) {
+        this.txtLive.setText(`● LIVE ${label}`).setColor('#44ff88');
+      } else {
+        this.txtLive.setText(`● STALE ${label}`).setColor('#ddaa33');
+      }
     } else {
       this.txtLive.setText('○ SIM').setColor('#446644');
     }

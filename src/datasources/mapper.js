@@ -20,8 +20,13 @@ const EFFORT_REMAINING = { small: 40, medium: 80, large: 150 };
 
 export function applyWasteland(simState, { wanted, rigs, completions }) {
   if (!simState.feed) simState.feed = [];
-  applyRigs(simState, rigs);
-  applyBeads(simState, wanted);
+  // The first poll hydrates the whole map at once. Announcing every one of those
+  // as news would bury the feed in identical lines and push out the bead
+  // entries; only changes after hydration are worth reporting.
+  const hydrating = !simState.hydrated;
+  applyRigs(simState, rigs, hydrating);
+  applyBeads(simState, wanted, hydrating);
+  simState.hydrated = true;
   simState.resources = completions;
   simState.liveData = true;
   if (simState.feed.length > 200) simState.feed = simState.feed.slice(-200);
@@ -34,7 +39,7 @@ function isStale(lastSeen) {
   return Date.now() - new Date(lastSeen).getTime() > SEVEN_DAYS_MS;
 }
 
-function applyRigs(simState, rigRows) {
+function applyRigs(simState, rigRows, hydrating) {
   const existingBuildings = new Map(simState.buildings.map(b => [b.id, b]));
 
   for (const row of rigRows) {
@@ -61,7 +66,7 @@ function applyRigs(simState, rigRows) {
         lastSeen: row.last_seen,
         trustLevel: row.trust_level ?? 0,
       });
-      feed(simState, 'rig', `rig registered: ${row.handle}`);
+      if (!hydrating) feed(simState, 'rig', `rig registered: ${row.handle}`);
     }
   }
 
@@ -71,7 +76,7 @@ function applyRigs(simState, rigRows) {
   );
 }
 
-function applyBeads(simState, wantedRows) {
+function applyBeads(simState, wantedRows, hydrating) {
   const existingBeads = new Map(simState.beads.map(b => [b.id, b]));
   const incomingIds = new Set();
 
@@ -127,10 +132,10 @@ function applyBeads(simState, wantedRows) {
     }
   }
 
-  reconcileAgents(simState);
+  reconcileAgents(simState, hydrating);
 }
 
-function reconcileAgents(simState) {
+function reconcileAgents(simState, hydrating) {
   // One polecat per claimed bead, keyed by bead ID.
   // Remove agents whose bead completed; spawn agents for newly claimed beads.
   const claimedBeads = simState.beads.filter(b => b.isClaimed && !b.depleted);
@@ -146,7 +151,9 @@ function reconcileAgents(simState) {
   for (const bead of claimedBeads) {
     if (!agentBeadIds.has(bead.id)) {
       spawnAgentPolecat(simState, bead);
-      feed(simState, 'sim', `agent dispatched: ${bead.claimedBy} → ${truncate(bead.label, 30)}`);
+      if (!hydrating) {
+        feed(simState, 'sim', `agent dispatched: ${bead.claimedBy} → ${truncate(bead.label, 30)}`);
+      }
     }
   }
 }

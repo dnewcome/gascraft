@@ -128,9 +128,9 @@
     <button id="about-btn">ABOUT</button>
     <div id="about-modal">
       <h1>// GASCRAFT</h1>
-      <p>An isometric RTS visualization of the <a href="https://wasteland.gastownhall.ai/" target="_blank" rel="noopener">wasteland</a> — a public <a href="https://www.dolthub.com/repositories/hop/wl-commons" target="_blank" rel="noopener">DoltHub database</a> that <a href="https://github.com/gastownhall/gastown" target="_blank" rel="noopener">gastown</a> instances write to. Built to make the wasteland legible: what's being worked on, who's working it, and how the pieces fit together.</p>
-      <p>Work items appear as beads, change color when claimed by an agent, and disappear when completed. Outpost beacons are real rigs — project repositories actively registered in the system.</p>
-      <p class="dim">// polls wasteland every 30s — agent movement is simulated interpolation between polls</p>
+      <p>An isometric RTS visualization of <a href="https://github.com/gastownhall/gastown" target="_blank" rel="noopener">gastown</a> — the multi-agent AI coding orchestration system — built from the live issue and pull-request streams of <a href="https://github.com/gastownhall/gastown" target="_blank" rel="noopener">gastown</a>, <a href="https://github.com/gastownhall/gascity" target="_blank" rel="noopener">gascity</a>, and <a href="https://github.com/gastownhall/beads" target="_blank" rel="noopener">beads</a>. Built to make the wasteland legible: what's being worked on, who's working it, and how the pieces fit together.</p>
+      <p>Open issues appear as beads. Open pull requests are beads someone has claimed — each one puts a polecat on the map labelled with the real author's handle. Beads disappear as the work closes, and outpost beacons are the people with a PR open right now.</p>
+      <p class="dim">// polls github every 60s — agent movement is simulated interpolation between polls</p>
       <hr>
       <div class="comment">// entity map</div>
       <table>
@@ -140,7 +140,7 @@
         <tr><td>bead ◈</td><td>work item / issue (bd create)</td></tr>
         <tr><td>rig □</td><td>project repo under management</td></tr>
         <tr><td>refinery □</td><td>merge queue processor</td></tr>
-        <tr><td>outpost ●</td><td>live rig from wasteland DB</td></tr>
+        <tr><td>outpost ●</td><td>contributor with an open PR</td></tr>
         <tr><td>deacon △</td><td>cross-rig monitor, nudges stuck polecats</td></tr>
       </table>
       <hr>
